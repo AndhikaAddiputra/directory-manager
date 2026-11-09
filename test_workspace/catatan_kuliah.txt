@@ -1,0 +1,1 @@
+Catatan kuliah AI Agents: Agent = LLM + Tool + Loop. Context engineering terdiri dari generate, retrieve, write, reduce, isolate.

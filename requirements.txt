@@ -1,0 +1,4 @@
+langchain==1.4.9
+langchain-core==1.7.6
+langchain-ollama==1.1.0
+langgraph==1.2.20
