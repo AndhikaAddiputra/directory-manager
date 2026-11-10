@@ -1,0 +1,234 @@
+"""content_organizer.py
+Tambahan untuk proyek: klasifikasi + ringkasan file berdasarkan ISI.
+File ini berdiri sendiri (tidak mengubah main.py / agent.py yang lama).
+
+Install tambahan:  pip install pypdf python-docx
+Jalankan (dari folder yang berisi test_workspace):  python content_organizer.py
+"""
+import json
+import re
+import shutil
+import time
+from pathlib import Path
+from typing import List
+
+from pydantic import BaseModel, Field
+from langchain_core.tools import tool
+from langchain_ollama import ChatOllama
+
+# ---------------- Konfigurasi ----------------
+WORKSPACE = Path("./test_workspace").resolve()
+MODEL = "qwen3.5:9b"          # ganti ke "qwen3.5:9b" untuk perbandingan
+SNIPPET_CHARS = 800           # cuplikan isi yang dikirim ke LLM (hemat token)
+MIN_CONFIDENCE = 0.6          # di bawah ini -> masuk folder "Perlu Ditinjau"
+REVIEW_FOLDER = "Perlu Ditinjau"
+
+# File non-teks diputuskan lewat aturan ekstensi (tanpa LLM = cepat & hemat)
+EXT_RULES = {
+    "Images": {".png", ".jpg", ".jpeg", ".gif", ".webp"},
+    "Archives": {".zip", ".rar", ".7z", ".tar", ".gz"},
+    "Code": {".py", ".js", ".java", ".cpp", ".c", ".html", ".css"},
+    "Data": {".csv", ".xlsx", ".json"},
+}
+
+def _make_llm() -> ChatOllama:
+    try:  # matikan mode thinking bila didukung (relevan untuk qwen3.x)
+        return ChatOllama(model=MODEL, temperature=0, num_ctx=4096, reasoning=False)
+    except Exception:
+        return ChatOllama(model=MODEL, temperature=0, num_ctx=4096)
+
+
+llm = _make_llm()
+
+
+# ---------------- Skema output LLM ----------------
+class FileAnalysis(BaseModel):
+    category: str = Field(description="Tepat salah satu kategori dari daftar yang diberikan")
+    confidence: float = Field(description="Keyakinan 0.0 sampai 1.0")
+    summary: str = Field(description="Ringkasan isi 1-2 kalimat dalam Bahasa Indonesia")
+
+
+class CategoryProposal(BaseModel):
+    categories: List[str] = Field(description="3 sampai 8 nama kategori folder yang singkat")
+
+
+# ---------------- Tool 1: ekstraksi teks ----------------
+def extract_text(path: Path, max_chars: int = SNIPPET_CHARS) -> str:
+    """Ambil cuplikan teks dari .txt/.md/.pdf/.docx. Kosong bila tidak bisa dibaca."""
+    ext = path.suffix.lower()
+    try:
+        if ext in (".txt", ".md"):
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                text = f.read(max_chars * 4)
+        elif ext == ".pdf":
+            from pypdf import PdfReader
+            pages = PdfReader(str(path)).pages[:3]
+            text = " ".join((p.extract_text() or "") for p in pages)
+        elif ext == ".docx":
+            from docx import Document
+            text = " ".join(p.text for p in Document(str(path)).paragraphs[:40])
+        else:
+            return ""
+    except Exception:
+        return ""
+    return re.sub(r"\s+", " ", text).strip()[:max_chars]
+
+
+# ---------------- Tool 2: analisis isi (klasifikasi + ringkasan, 1 panggilan LLM) ----------------
+def analyze_content(filename: str, snippet: str, categories: List[str]) -> FileAnalysis:
+    prompt = (
+        "Kamu mengklasifikasikan dokumen berdasarkan isinya.\n"
+        f"Kategori yang diizinkan: {', '.join(categories)}\n"
+        "Pilih TEPAT satu kategori dari daftar itu. Jika tidak ada yang cocok, "
+        "beri confidence rendah.\n"
+        f"Nama file: {filename}\n"
+        f"Cuplikan isi: {snippet}"
+    )
+    try:
+        result = llm.with_structured_output(FileAnalysis).invoke(prompt)
+    except Exception as e:
+        return FileAnalysis(category=REVIEW_FOLDER, confidence=0.0, summary=f"(gagal analisis: {e})")
+
+    # validasi: kategori harus ada di daftar (cegah kategori halusinasi)
+    lookup = {c.lower(): c for c in categories}
+    category = lookup.get(result.category.strip().lower())
+    if category is None or result.confidence < MIN_CONFIDENCE:
+        category = REVIEW_FOLDER
+    return FileAnalysis(category=category, confidence=result.confidence, summary=result.summary)
+
+
+# ---------------- Tool 3: usulan kategori dari AI ----------------
+def propose_categories(samples: List[tuple]) -> List[str]:
+    joined = "\n".join(f"- {name}: {snip[:300]}" for name, snip in samples)
+    prompt = (
+        "Berikut cuplikan beberapa file. Usulkan 3 sampai 8 nama kategori folder "
+        "yang singkat dan mewakili topik-topik ini (contoh: Jurnal AI, Novel, Ekonomi, Medis).\n"
+        f"{joined}"
+    )
+    try:
+        result = llm.with_structured_output(CategoryProposal).invoke(prompt)
+        return [c.strip() for c in result.categories if c.strip()]
+    except Exception:
+        return []
+
+
+# ---------------- Opsional: bungkus sebagai tool LangChain untuk agent ----------------
+CURRENT_CATEGORIES: List[str] = []
+
+
+@tool
+def analyze_file_content(file_path: str) -> str:
+    """Membaca isi file teks/PDF/DOCX di test_workspace, lalu mengembalikan kategori,
+    confidence, dan ringkasan 1-2 kalimat. Input: path lengkap file."""
+    path = Path(file_path).resolve()
+    if WORKSPACE not in path.parents:
+        return "Akses ditolak: di luar test_workspace"
+    snippet = extract_text(path)
+    if not snippet:
+        return "File tidak berisi teks yang bisa dibaca"
+    a = analyze_content(path.name, snippet, CURRENT_CATEGORIES or [REVIEW_FOLDER])
+    return json.dumps(a.model_dump(), ensure_ascii=False)
+
+
+# ---------------- Util: kategori awal (human-in-the-loop) ----------------
+def ask_categories(files: List[Path]) -> List[str]:
+    print("\nPilih cara menentukan kategori:")
+    print("  1. Ketik sendiri (pisahkan dengan koma)")
+    print("  2. Usulkan AI dari isi file, lalu saya setujui/edit")
+    mode = input("Pilihan [1/2]: ").strip()
+
+    if mode == "2":
+        samples = []
+        for f in files:
+            snip = extract_text(f, 300)
+            if snip:
+                samples.append((f.name, snip))
+            if len(samples) >= 8:
+                break
+        proposed = propose_categories(samples)
+        print(f"\nUsulan AI: {', '.join(proposed) if proposed else '(kosong)'}")
+        edited = input("Tekan Enter untuk setuju, atau ketik daftar baru (pisah koma): ").strip()
+        cats = [c.strip() for c in edited.split(",") if c.strip()] if edited else proposed
+    else:
+        raw = input("Kategori (contoh: Jurnal AI, Buku Politik, Novel, Medis): ")
+        cats = [c.strip() for c in raw.split(",") if c.strip()]
+
+    if not cats:
+        cats = ["Dokumen Umum"]
+    return cats
+
+# ---------------- Util: pemindahan aman ----------------
+def _clean_folder(name: str) -> str:
+    return re.sub(r'[\\/:*?"<>|]', "", name).strip() or REVIEW_FOLDER
+
+def safe_move(src: Path, category: str) -> Path:
+    src = src.resolve()
+    if WORKSPACE not in src.parents:
+        raise ValueError("File di luar test_workspace")
+    dest_dir = WORKSPACE / _clean_folder(category)
+    dest_dir.mkdir(exist_ok=True)
+    dest = dest_dir / src.name
+    n = 1
+    while dest.exists():  # jangan menimpa file yang sudah ada
+        dest = dest_dir / f"{src.stem}_{n}{src.suffix}"
+        n += 1
+    shutil.move(str(src), str(dest))
+    return dest
+
+def ext_category(path: Path) -> str:
+    ext = path.suffix.lower()
+    for folder, exts in EXT_RULES.items():
+        if ext in exts:
+            return folder
+    return "Others"
+
+# ---------------- Orkestrasi ----------------
+def main():
+    print("=== CONTENT-BASED ORGANIZER ===")
+    files = sorted(f for f in WORKSPACE.iterdir() if f.is_file() and not f.name.startswith("."))
+    if not files:
+        print("Tidak ada file di test_workspace.")
+        return
+
+    categories = ask_categories(files)
+    CURRENT_CATEGORIES[:] = categories
+    print(f"\nKategori dipakai: {', '.join(categories)}\n")
+
+    # 1) Analisis semua file -> rencana (belum ada yang dipindah)
+    plan = []
+    total_start = time.perf_counter()
+    for f in files:
+        t0 = time.perf_counter()
+        snippet = extract_text(f)
+        if snippet:
+            a = analyze_content(f.name, snippet, categories)
+            plan.append((f, a.category, a.confidence, a.summary))
+            how = "LLM"
+        else:
+            plan.append((f, ext_category(f), 1.0, ""))
+            how = "ekstensi"
+        print(f"  [{how}] {f.name} -> {plan[-1][1]}  ({time.perf_counter() - t0:.1f} dtk)")
+    print(f"\nTotal waktu analisis: {time.perf_counter() - total_start:.1f} dtk")
+
+    # 2) Dry-run: tampilkan rencana, minta konfirmasi
+    print("\n=== RENCANA PEMINDAHAN ===")
+    for f, cat, conf, summ in plan:
+        print(f"- {f.name} -> {cat} (confidence {conf:.2f})")
+        if summ:
+            print(f"    ringkasan: {summ}")
+    if input("\nLanjutkan memindahkan? [y/N]: ").strip().lower() != "y":
+        print("Dibatalkan. Tidak ada file yang dipindah.")
+        return
+
+    # 3) Eksekusi + simpan log untuk undo
+    log = []
+    for f, cat, _, _ in plan:
+        original = str(f)
+        dest = safe_move(f, cat)
+        log.append({"from": original, "to": str(dest)})
+    (WORKSPACE / ".move_log.json").write_text(json.dumps(log, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"\nSelesai. {len(log)} file dipindahkan. Log undo: test_workspace/.move_log.json")
+
+
+if __name__ == "__main__":
+    main()
