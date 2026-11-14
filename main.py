@@ -9,7 +9,8 @@ Alur (orchestrator-workers + isolate context):
    kalau belum, agent diberi umpan balik dan mencoba lagi (maksimal 2 kali).
 """
 from agent import agent
-from tools import WORKSPACE, scan_directory
+import tools
+from tools import scan_directory, set_workspace
 
 
 def jalankan(messages):
@@ -30,12 +31,20 @@ def jalankan(messages):
 
 
 def masih_ada(nama_file):
-    return (WORKSPACE / nama_file).is_file()
+    return (tools.WORKSPACE / nama_file).is_file()
 
 
 if __name__ == "__main__":
     print("=== LOCAL WORKSPACE ORGANIZER AGENT ===")
-    hasil_scan = scan_directory.invoke({"folder_path": str(WORKSPACE)})
+    raw = input(f"Path folder yang ingin dirapikan [{tools.WORKSPACE}]: ").strip()
+    if raw:
+        try:
+            set_workspace(raw)
+        except ValueError as e:
+            print(e)
+            raise SystemExit(1)
+    print(f"Folder: {tools.WORKSPACE}")
+    hasil_scan = scan_directory.invoke({"folder_path": str(tools.WORKSPACE)})
     print(f"\n[Scan]\n{hasil_scan}\n")
     baris = [b for b in hasil_scan.splitlines() if " | " in b]
 
@@ -67,5 +76,5 @@ if __name__ == "__main__":
 
     print("\n=== LAPORAN AKHIR ===")
     print("\n".join(laporan))
-    sisa = [f.name for f in WORKSPACE.iterdir() if f.is_file() and not f.name.startswith(".")]
+    sisa = [f.name for f in tools.WORKSPACE.iterdir() if f.is_file() and not f.name.startswith(".")]
     print("\n[Verifier] Semua file sudah rapi." if not sisa else f"\n[Verifier] Masih tersisa: {sisa}")

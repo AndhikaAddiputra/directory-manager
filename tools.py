@@ -3,6 +3,23 @@ import shutil
 from langchain_core.tools import tool
 
 WORKSPACE = Path(__file__).parent.joinpath("test_workspace").resolve()
+
+
+def set_workspace(path: str | Path) -> Path:
+    """Ganti folder yang dirapikan. Akses tool tetap hanya di dalam folder ini."""
+    global WORKSPACE
+    p = Path(path).expanduser()
+    if not str(p).strip():
+        raise ValueError("Path folder kosong.")
+    if not p.is_absolute():
+        p = Path.cwd() / p
+    p = p.resolve()
+    if not p.exists() or not p.is_dir():
+        raise ValueError(f"Folder tidak ditemukan: {p}")
+    if p == Path(p.anchor):
+        raise ValueError("Folder root tidak boleh dipilih.")
+    WORKSPACE = p
+    return WORKSPACE
 CATEGORIES = ("Documents", "Images", "Code", "Archives", "Others")
 EXT_MAP = {
     "Documents": {".txt", ".md", ".pdf", ".doc", ".docx", ".csv", ".xlsx", ".pptx"},
@@ -26,7 +43,7 @@ def _aman(path: str) -> Path:
         p = WORKSPACE / p if not str(p).startswith("test_workspace") else WORKSPACE.parent / p
     p = p.resolve()
     if not p.is_relative_to(WORKSPACE):
-        raise ValueError(f"Akses ditolak: {path} berada di luar test_workspace")
+        raise ValueError(f"Akses ditolak: {path} berada di luar folder yang dipilih")
     return p
 
 

@@ -3,11 +3,12 @@ Tambahan untuk proyek: klasifikasi + ringkasan file berdasarkan ISI.
 File ini berdiri sendiri (tidak mengubah main.py / agent.py yang lama).
 
 Install tambahan:  pip install pypdf python-docx
-Jalankan (dari folder yang berisi test_workspace):  python content_organizer.py
+Jalankan:  python content_organizer.py [path-folder]
 """
 import json
 import re
 import shutil
+import sys
 import time
 from pathlib import Path
 from typing import List
@@ -30,6 +31,25 @@ EXT_RULES = {
     "Code": {".py", ".js", ".java", ".cpp", ".c", ".html", ".css"},
     "Data": {".csv", ".xlsx", ".json"},
 }
+
+def set_workspace(path: str | Path) -> Path:
+    """Ganti folder yang dirapikan. Pemindahan tetap hanya di dalam folder ini."""
+    global WORKSPACE
+    p = Path(path).expanduser()
+    if not str(p).strip():
+        raise ValueError("Path folder kosong.")
+    if not p.is_absolute():
+        p = Path.cwd() / p
+    p = p.resolve()
+    if not p.exists():
+        raise ValueError(f"Folder tidak ditemukan: {p}")
+    if not p.is_dir():
+        raise ValueError(f"Bukan folder: {p}")
+    if p == Path(p.anchor):
+        raise ValueError("Folder root tidak boleh dipilih.")
+    WORKSPACE = p
+    return WORKSPACE
+
 
 def _make_llm() -> ChatOllama:
     try:  # matikan mode thinking bila didukung (relevan untuk qwen3.x)
@@ -122,7 +142,7 @@ def analyze_file_content(file_path: str) -> str:
     confidence, dan ringkasan 1-2 kalimat. Input: path lengkap file."""
     path = Path(file_path).resolve()
     if WORKSPACE not in path.parents:
-        return "Akses ditolak: di luar test_workspace"
+        return "Akses ditolak: di luar folder yang dipilih"
     snippet = extract_text(path)
     if not snippet:
         return "File tidak berisi teks yang bisa dibaca"
@@ -164,7 +184,7 @@ def _clean_folder(name: str) -> str:
 def safe_move(src: Path, category: str) -> Path:
     src = src.resolve()
     if WORKSPACE not in src.parents:
-        raise ValueError("File di luar test_workspace")
+        raise ValueError("File di luar folder yang dipilih")
     dest_dir = WORKSPACE / _clean_folder(category)
     dest_dir.mkdir(exist_ok=True)
     dest = dest_dir / src.name
@@ -174,6 +194,42 @@ def safe_move(src: Path, category: str) -> Path:
         n += 1
     shutil.move(str(src), str(dest))
     return dest
+
+def _inside(workspace: Path, path: Path) -> bool:
+    try:
+        path.resolve().relative_to(workspace.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def undo_moves(workspace: Path | None = None) -> int:
+    """Kembalikan file sesuai .move_log.json di dalam folder yang dipilih."""
+    workspace = (workspace or WORKSPACE).resolve()
+    log_path = workspace / ".move_log.json"
+    if not log_path.is_file():
+        return 0
+    try:
+        entries = json.loads(log_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return 0
+    restored = 0
+    for entry in reversed(entries):
+        src, dst = Path(entry["to"]), Path(entry["from"])
+        if not _inside(workspace, src) or not _inside(workspace, dst):
+            continue
+        if src.exists() and not dst.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            src.rename(dst)
+            restored += 1
+            try:
+                if src.parent != workspace:
+                    src.parent.rmdir()
+            except OSError:
+                pass
+    log_path.unlink(missing_ok=True)
+    return restored
+
 
 def ext_category(path: Path) -> str:
     ext = path.suffix.lower()
@@ -185,9 +241,20 @@ def ext_category(path: Path) -> str:
 # ---------------- Orkestrasi ----------------
 def main():
     print("=== CONTENT-BASED ORGANIZER ===")
+    try:
+        if len(sys.argv) > 1:
+            set_workspace(sys.argv[1])
+        else:
+            raw = input(f"Path folder yang ingin dirapikan [{WORKSPACE}]: ").strip()
+            if raw:
+                set_workspace(raw)
+    except ValueError as e:
+        print(e)
+        return
+    print(f"Folder: {WORKSPACE}")
     files = sorted(f for f in WORKSPACE.iterdir() if f.is_file() and not f.name.startswith("."))
     if not files:
-        print("Tidak ada file di test_workspace.")
+        print(f"Tidak ada file lepas di {WORKSPACE}.")
         return
 
     categories = ask_categories(files)
@@ -227,7 +294,7 @@ def main():
         dest = safe_move(f, cat)
         log.append({"from": original, "to": str(dest)})
     (WORKSPACE / ".move_log.json").write_text(json.dumps(log, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"\nSelesai. {len(log)} file dipindahkan. Log undo: test_workspace/.move_log.json")
+    print(f"\nSelesai. {len(log)} file dipindahkan. Log undo: {WORKSPACE / '.move_log.json'}")
 
 
 if __name__ == "__main__":
