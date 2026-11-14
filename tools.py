@@ -20,12 +20,22 @@ def set_workspace(path: str | Path) -> Path:
         raise ValueError("Folder root tidak boleh dipilih.")
     WORKSPACE = p
     return WORKSPACE
-CATEGORIES = ("Documents", "Images", "Code", "Archives", "Others")
+CATEGORIES = ("Documents", "Images", "Videos", "Audio", "Code", "Data", "Archives", "Others")
 EXT_MAP = {
-    "Documents": {".txt", ".md", ".pdf", ".doc", ".docx", ".csv", ".xlsx", ".pptx"},
-    "Images": {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"},
-    "Code": {".py", ".js", ".ts", ".java", ".c", ".cpp", ".html", ".css", ".ipynb"},
-    "Archives": {".zip", ".rar", ".tar", ".gz", ".7z"},
+    "Documents": {".txt", ".md", ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".rtf", ".odt"},
+    "Images": {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".tif", ".tiff", ".heic", ".ico"},
+    "Videos": {
+        ".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm", ".wmv", ".flv",
+        ".mpeg", ".mpg", ".3gp", ".m2ts", ".vob", ".ogv",
+        ".hevc", ".hvc", ".h265", ".h264",
+    },
+    "Audio": {
+        ".mp3", ".wav", ".flac", ".aac", ".m4a", ".ogg", ".oga", ".opus",
+        ".wma", ".aiff", ".aif", ".alac", ".mid", ".midi", ".amr",
+    },
+    "Code": {".py", ".js", ".ts", ".tsx", ".mts", ".cts", ".jsx", ".java", ".c", ".cpp", ".h", ".html", ".css", ".ipynb"},
+    "Data": {".csv", ".tsv", ".xlsx", ".xls", ".json", ".xml"},
+    "Archives": {".zip", ".rar", ".tar", ".gz", ".bz2", ".7z"},
 }
 
 
@@ -86,7 +96,7 @@ def move_file(source_path: str, category: str) -> str:
 
     Args:
         source_path: Path lengkap file yang akan dipindahkan.
-        category: Salah satu dari Documents, Images, Code, Archives, Others.
+        category: Salah satu dari Documents, Images, Videos, Audio, Code, Data, Archives, Others.
     """
     if category not in CATEGORIES:
         return f"Kategori '{category}' tidak valid. Pilih salah satu: {', '.join(CATEGORIES)}."

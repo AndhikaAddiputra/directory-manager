@@ -26,10 +26,20 @@ REVIEW_FOLDER = "Perlu Ditinjau"
 
 # File non-teks diputuskan lewat aturan ekstensi (tanpa LLM = cepat & hemat)
 EXT_RULES = {
-    "Images": {".png", ".jpg", ".jpeg", ".gif", ".webp"},
-    "Archives": {".zip", ".rar", ".7z", ".tar", ".gz"},
-    "Code": {".py", ".js", ".java", ".cpp", ".c", ".html", ".css"},
-    "Data": {".csv", ".xlsx", ".json"},
+    "Documents": {".txt", ".md", ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".rtf", ".odt"},
+    "Images": {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".tif", ".tiff", ".heic", ".ico"},
+    "Videos": {
+        ".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm", ".wmv", ".flv",
+        ".mpeg", ".mpg", ".3gp", ".m2ts", ".vob", ".ogv",
+        ".hevc", ".hvc", ".h265", ".h264",
+    },
+    "Audio": {
+        ".mp3", ".wav", ".flac", ".aac", ".m4a", ".ogg", ".oga", ".opus",
+        ".wma", ".aiff", ".aif", ".alac", ".mid", ".midi", ".amr",
+    },
+    "Code": {".py", ".js", ".ts", ".tsx", ".mts", ".cts", ".jsx", ".java", ".c", ".cpp", ".h", ".html", ".css"},
+    "Data": {".csv", ".tsv", ".xlsx", ".xls", ".json", ".xml"},
+    "Archives": {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2"},
 }
 
 def set_workspace(path: str | Path) -> Path:

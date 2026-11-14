@@ -25,7 +25,7 @@ ss.setdefault("cats_raw", "")
 ss.setdefault("plan", None)
 ss.setdefault("stats", None)
 ss.setdefault("history", [])
-ss.setdefault("folder_path", str(DEMO_WORKSPACE))
+ss.setdefault("folder_path", "")
 
 picked = ss.pop("_picked_folder", None)
 if picked:
@@ -53,7 +53,38 @@ def move_log_path() -> Path:
     return co.WORKSPACE / ".move_log.json"
 
 
+def _pick_folder_macos(initial: str) -> str | None:
+    """Buka dialog folder macOS. '' artinya dibatalkan, None artinya gagal."""
+    script = """
+on run argv
+    try
+        POSIX path of (choose folder with prompt "Pilih folder yang ingin dirapikan" default location POSIX file (item 1 of argv))
+    on error number -128
+        ""
+    end try
+end run
+"""
+    try:
+        result = subprocess.run(
+            ["osascript", "-e", script, initial],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip().rstrip("/")
+
+
 def pick_folder() -> str | None:
+    initial = (ss.get("folder_path") or "").strip()
+    initial_path = Path(initial).expanduser() if initial else Path.home()
+    if not initial_path.is_dir():
+        initial_path = Path.home()
+    if sys.platform == "darwin":
+        return _pick_folder_macos(str(initial_path))
     try:
         import tkinter as tk
         from tkinter import filedialog
@@ -63,11 +94,12 @@ def pick_folder() -> str | None:
     root.withdraw()
     try:
         root.attributes("-topmost", True)
+        path = filedialog.askdirectory(initialdir=str(initial_path))
     except Exception:
-        pass
-    path = filedialog.askdirectory(initialdir=ss.get("folder_path") or str(DEMO_WORKSPACE))
-    root.destroy()
-    return path or None
+        path = ""
+    finally:
+        root.destroy()
+    return path or ""
 
 
 def apply_model(name: str):
@@ -80,6 +112,9 @@ def parse_cats(raw: str) -> list:
 
 
 def reset_current_folder():
+    if not (ss.get("folder_path") or "").strip():
+        st.error("Pilih folder atau masukan path folder yang ingin dirapihkan")
+        return
     try:
         target = co.set_workspace(ss.folder_path)
     except ValueError as e:
@@ -185,15 +220,21 @@ st.markdown(
       border: none !important; background: transparent !important;
     }
     .st-key-hero [data-testid="stCaptionContainer"] p { color: rgba(255,255,255,.8); text-align: center; }
-    .st-key-hero button {
+    .st-key-composer button {
       background: #1f6fff !important; color: #fff !important; border: none !important;
-      border-radius: 999px !important; width: 46px; height: 46px; font-weight: 700;
-      box-shadow: none;
+      border-radius: 999px !important; width: 46px; min-width: 46px; height: 46px;
+      font-size: 0 !important; box-shadow: none; padding: 0 !important;
+    }
+    .st-key-composer [data-testid="stIconMaterial"] {
+      font-size: 22px !important; color: #fff;
+    }
+    .st-key-composer button [data-testid="stMarkdownContainer"] {
+      display: none !important;
     }
     .st-key-topbar button {
       background: #fff !important; color: #12243f !important; border: none !important;
       border-radius: 999px !important; padding: 0 16px !important; height: 36px;
-      font-weight: 600 !important; width: auto;
+      font-weight: 600 !important; font-size: 14px !important; width: auto;
     }
     .st-key-stage { padding: 8px 32px 32px; background: #fff; }
     .lower { display: grid; grid-template-columns: 1.3fr .9fr; gap: 24px; align-items: end; padding: 18px 0 8px; }
@@ -226,11 +267,13 @@ st.markdown(
 )
 
 folder_error = None
-try:
-    active = co.set_workspace(ss.folder_path)
-except ValueError as e:
-    active = None
-    folder_error = str(e)
+active = None
+entered_path = (ss.get("folder_path") or "").strip()
+if entered_path:
+    try:
+        active = co.set_workspace(entered_path)
+    except ValueError as e:
+        folder_error = str(e)
 
 if ss.get("active_folder") != (str(active) if active else None):
     ss.plan = None
@@ -281,16 +324,16 @@ with st.container(key="shell"):
                 "Folder yang ingin dirapikan",
                 key="folder_path",
                 label_visibility="collapsed",
-                placeholder="Tempel path folder yang ingin dirapikan…",
+                placeholder="Pilih folder atau masukan path folder yang ingin dirapihkan",
                 help="Path absolut atau relatif. Hanya file yang langsung ada di folder ini yang dipindai.",
             )
-            if st.button("→", help="Pilih folder lewat jendela sistem"):
+            if st.button("Pilih folder", icon=":material/folder_open:", help="Pilih folder dari komputer"):
                 chosen = pick_folder()
                 if chosen:
                     ss._picked_folder = chosen
                     ss.plan, ss.stats = None, None
                     st.rerun()
-                else:
+                elif chosen is None:
                     st.warning("Pemilih folder tidak tersedia. Tempel path di kolom di samping.")
         if folder_error:
             st.error(folder_error)
@@ -339,7 +382,9 @@ with st.container(key="shell"):
         st.subheader("File di folder")
         if active and not folder_error:
             st.caption("Hanya file yang langsung ada di folder ini. Isi subfolder tidak dipindai.")
-        if folder_error:
+        if not entered_path:
+            st.info("Pilih folder atau masukan path folder yang ingin dirapihkan")
+        elif folder_error:
             st.info("Pilih folder yang valid untuk melihat filenya.")
         elif not files:
             st.info(f"Tidak ada file lepas di {active}. Untuk mengembalikan file yang sudah dipindahkan, gunakan Reset folder.")
