@@ -1,0 +1,171 @@
+{
+  "undo": [
+    {
+      "n": 100,
+      "engine": "tools",
+      "logged": 100,
+      "moved_bytes_ok": 100,
+      "restored": 100,
+      "bytes_match": 100,
+      "accuracy": 1.0,
+      "dirs_left": [],
+      "log_removed": true,
+      "second_undo": 0,
+      "seconds": 0.0743
+    },
+    {
+      "n": 100,
+      "engine": "content_organizer",
+      "logged": 100,
+      "moved_bytes_ok": 100,
+      "restored": 100,
+      "bytes_match": 100,
+      "accuracy": 1.0,
+      "dirs_left": [],
+      "log_removed": true,
+      "second_undo": 0,
+      "seconds": 0.0594
+    },
+    {
+      "n": 1000,
+      "engine": "tools",
+      "logged": 1000,
+      "moved_bytes_ok": 1000,
+      "restored": 1000,
+      "bytes_match": 1000,
+      "accuracy": 1.0,
+      "dirs_left": [],
+      "log_removed": true,
+      "second_undo": 0,
+      "seconds": 0.7269
+    },
+    {
+      "n": 1000,
+      "engine": "content_organizer",
+      "logged": 1000,
+      "moved_bytes_ok": 1000,
+      "restored": 1000,
+      "bytes_match": 1000,
+      "accuracy": 1.0,
+      "dirs_left": [],
+      "log_removed": true,
+      "second_undo": 0,
+      "seconds": 0.5658
+    },
+    {
+      "n": 10000,
+      "engine": "tools",
+      "logged": 10000,
+      "moved_bytes_ok": 10000,
+      "restored": 10000,
+      "bytes_match": 10000,
+      "accuracy": 1.0,
+      "dirs_left": [],
+      "log_removed": true,
+      "second_undo": 0,
+      "seconds": 7.379
+    },
+    {
+      "n": 10000,
+      "engine": "content_organizer",
+      "logged": 10000,
+      "moved_bytes_ok": 10000,
+      "restored": 10000,
+      "bytes_match": 10000,
+      "accuracy": 1.0,
+      "dirs_left": [],
+      "log_removed": true,
+      "second_undo": 0,
+      "seconds": 5.8973
+    }
+  ],
+  "collision": [
+    {
+      "engine": "tools",
+      "n": 100,
+      "planted": 10,
+      "strategy": "dilewati",
+      "handled": 10,
+      "old_content_intact": 10,
+      "new_content_intact": 10,
+      "passed": true
+    },
+    {
+      "engine": "content_organizer",
+      "n": 100,
+      "planted": 10,
+      "strategy": "diberi akhiran _1",
+      "handled": 10,
+      "old_content_intact": 10,
+      "new_content_intact": 10,
+      "passed": true
+    }
+  ],
+  "boundaries": [
+    {
+      "name": "tools menolak file di luar folder",
+      "passed": true,
+      "detail": "Akses ditolak: /var/folders/bt/nw7jxgn53yq_xhnm_qgttc1w0000gn/T/di-luar-batas-bj6kf5oh.txt berada di luar folder yang dipilih"
+    },
+    {
+      "name": "content organizer menolak file di luar folder",
+      "passed": true,
+      "detail": "ValueError"
+    },
+    {
+      "name": "tools menolak symlink yang mengarah ke luar",
+      "passed": true,
+      "detail": "Akses ditolak: /var/folders/bt/nw7jxgn53yq_xhnm_qgttc1w0000gn/T/batas-bj6kf5oh/tautan.txt berada di luar folder yang dipilih"
+    },
+    {
+      "name": "content organizer menolak symlink yang mengarah ke luar",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tools menolak kategori yang tidak dikenal",
+      "passed": true,
+      "detail": "Kategori '../tmp' tidak valid. Pilih salah satu: Documents, Images, Videos, Audio, Code, Data, Archives, Others."
+    },
+    {
+      "name": "kategori berisi ../ tetap di dalam folder",
+      "passed": true,
+      "detail": "....tmp/catatan.txt"
+    },
+    {
+      "name": "folder root ditolak",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "scan melewati file tersembunyi",
+      "passed": true,
+      "detail": "/private/var/folders/bt/nw7jxgn53yq_xhnm_qgttc1w0000gn/T/batas-bj6kf5oh/terlihat.txt | ekstensi: .txt | saran kategori: Documents | file teks: WAJIB dibaca dengan read_text_file"
+    },
+    {
+      "name": "pembacaan teks dipotong di 1000 karakter",
+      "passed": true,
+      "detail": "panjang 1000"
+    },
+    {
+      "name": "read_text_file menolak selain .txt dan .md",
+      "passed": true,
+      "detail": "Hanya file .txt dan .md yang bisa dibaca."
+    },
+    {
+      "name": "log undo palsu tidak menulis file ke luar folder",
+      "passed": true,
+      "detail": "dikembalikan 0"
+    },
+    {
+      "name": "folder kosong dilaporkan kosong",
+      "passed": true,
+      "detail": "Folder kosong, tidak ada file untuk dirapikan."
+    },
+    {
+      "name": "file yang tidak ada tidak dipindahkan",
+      "passed": true,
+      "detail": "File /var/folders/bt/nw7jxgn53yq_xhnm_qgttc1w0000gn/T/batas-bj6kf5oh/kosong/tidak-ada.txt tidak ditemukan."
+    }
+  ]
+}

@@ -213,6 +213,52 @@ def _inside(workspace: Path, path: Path) -> bool:
         return False
 
 
+def build_move_report(workspace: Path, log: list, created: list[str]) -> tuple[str, str]:
+    """Teks laporan pemindahan dan ringkasan satu baris.
+
+    Laporan menyebut folder yang baru dibuat, lalu isi lengkap setiap folder tujuan.
+    """
+    moved: dict[str, set[str]] = {}
+    for entry in log:
+        dest = Path(entry["to"])
+        moved.setdefault(dest.parent.name, set()).add(dest.name)
+
+    lines = [
+        "# Laporan pemindahan",
+        "",
+        f"Folder kerja: {workspace}",
+        f"Jumlah file dipindahkan: {len(log)}",
+        "",
+        "## Folder yang dibuat",
+    ]
+    if created:
+        lines.extend(f"- {name}" for name in created)
+    else:
+        lines.append("- Tidak ada folder baru. File masuk ke folder yang sudah ada.")
+    lines.extend(["", "## Isi setiap folder"])
+    bits = []
+    for name in sorted(moved):
+        folder = workspace / name
+        lines.extend(["", f"### {name}"])
+        if not folder.is_dir():
+            lines.append("- Folder tidak ditemukan.")
+            bits.append(f"{name} (tidak ditemukan)")
+            continue
+        files = sorted(
+            p.name for p in folder.iterdir() if p.is_file() and not p.name.startswith(".")
+        )
+        bits.append(f"{name} ({len(files)} file)")
+        if not files:
+            lines.append("- Folder kosong.")
+            continue
+        for fname in files:
+            note = " (dipindahkan sekarang)" if fname in moved[name] else ""
+            lines.append(f"- {fname}{note}")
+    made = ", ".join(created) if created else "tidak ada folder baru"
+    summary = f"Folder dibuat: {made}. Isi: {', '.join(bits)}."
+    return "\n".join(lines) + "\n", summary
+
+
 def undo_moves(workspace: Path | None = None) -> int:
     """Kembalikan file sesuai .move_log.json di dalam folder yang dipilih."""
     workspace = (workspace or WORKSPACE).resolve()

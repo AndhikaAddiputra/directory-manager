@@ -121,6 +121,7 @@ def reset_current_folder():
         st.error(str(e))
         return
     ss.plan, ss.stats = None, None
+    ss.move_report, ss.move_summary, ss.move_errors = "", "", []
     if target == DEMO_WORKSPACE:
         res = subprocess.run(
             [sys.executable, "reset_workspace.py"],
@@ -278,6 +279,7 @@ if entered_path:
 if ss.get("active_folder") != (str(active) if active else None):
     ss.plan = None
     ss.stats = None
+    ss.move_report, ss.move_summary, ss.move_errors = "", "", []
     ss.active_folder = str(active) if active else None
 
 with st.container(key="shell"):
@@ -483,8 +485,17 @@ with st.container(key="shell"):
             st.subheader("Eksekusi")
             confirm = st.checkbox("Saya sudah memeriksa rencana di atas")
             if st.button("Pindahkan file", disabled=not confirm):
+                rows = edited[edited["Pindah"]]
+                created, seen = [], set()
+                for _, r in rows.iterrows():
+                    folder_name = co._clean_folder(str(r["Kategori"]))
+                    if folder_name in seen:
+                        continue
+                    seen.add(folder_name)
+                    if not (co.WORKSPACE / folder_name).exists():
+                        created.append(folder_name)
                 log, errors = [], []
-                for _, r in edited[edited["Pindah"]].iterrows():
+                for _, r in rows.iterrows():
                     src = co.WORKSPACE / r["File"]
                     try:
                         dest = co.safe_move(src, r["Kategori"])
@@ -493,11 +504,27 @@ with st.container(key="shell"):
                         errors.append(f"{r['File']}: {e}")
                 move_log_path().write_text(json.dumps(log, indent=2, ensure_ascii=False), encoding="utf-8")
                 ss.plan = None
-                st.success(f"{len(log)} file dipindahkan.")
-                if errors:
-                    st.error("Gagal:\n" + "\n".join(errors))
+                ss.move_errors = errors
+                if log:
+                    ss.move_report, ss.move_summary = co.build_move_report(co.WORKSPACE, log, created)
                 else:
-                    st.rerun()
+                    ss.move_report, ss.move_summary = "", ""
+                ss._flash = f"{len(log)} file dipindahkan."
+                st.rerun()
+
+        if ss.get("move_report"):
+            st.subheader("Laporan pemindahan")
+            st.caption(ss.get("move_summary") or "")
+            st.download_button(
+                "Unduh laporan",
+                data=ss.move_report,
+                file_name="laporan-pemindahan.md",
+                mime="text/markdown",
+                type="primary",
+                key="download_move_report",
+            )
+        if ss.get("move_errors"):
+            st.error("Gagal:\n" + "\n".join(ss.move_errors))
 
         # ---------------- Undo ----------------
         st.divider()
@@ -508,6 +535,7 @@ with st.container(key="shell"):
             if active and log_path.exists():
                 if st.button("Kembalikan pemindahan terakhir"):
                     restored = co.undo_moves(active)
+                    ss.move_report, ss.move_summary, ss.move_errors = "", "", []
                     ss._flash = f"{restored} file dikembalikan."
                     st.rerun()
             else:

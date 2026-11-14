@@ -1,0 +1,154 @@
+{
+  "sizes": [
+    {
+      "n": 100,
+      "tools_classify": {
+        "correct": 100,
+        "total": 100,
+        "accuracy": 1.0,
+        "wrong": [],
+        "wrong_count": 0,
+        "seconds": 0.0003
+      },
+      "organizer_classify": {
+        "correct": 100,
+        "total": 100,
+        "accuracy": 1.0,
+        "wrong": [],
+        "wrong_count": 0,
+        "seconds": 0.0002
+      },
+      "classifier_disagreements": 0,
+      "tools_move": {
+        "engine": "tools",
+        "moved_ok": 100,
+        "total": 100,
+        "accuracy": 1.0,
+        "missing": 0,
+        "misplaced": [],
+        "leftover_root": 0,
+        "escaped": 0,
+        "errors": [],
+        "error_count": 0,
+        "seconds": 0.0249,
+        "files_per_second": 4018.4
+      },
+      "organizer_move": {
+        "engine": "content_organizer",
+        "moved_ok": 100,
+        "total": 100,
+        "accuracy": 1.0,
+        "missing": 0,
+        "misplaced": [],
+        "leftover_root": 0,
+        "escaped": 0,
+        "errors": [],
+        "error_count": 0,
+        "seconds": 0.0136,
+        "files_per_second": 7365.7
+      }
+    },
+    {
+      "n": 1000,
+      "tools_classify": {
+        "correct": 1000,
+        "total": 1000,
+        "accuracy": 1.0,
+        "wrong": [],
+        "wrong_count": 0,
+        "seconds": 0.0027
+      },
+      "organizer_classify": {
+        "correct": 1000,
+        "total": 1000,
+        "accuracy": 1.0,
+        "wrong": [],
+        "wrong_count": 0,
+        "seconds": 0.0022
+      },
+      "classifier_disagreements": 0,
+      "tools_move": {
+        "engine": "tools",
+        "moved_ok": 1000,
+        "total": 1000,
+        "accuracy": 1.0,
+        "missing": 0,
+        "misplaced": [],
+        "leftover_root": 0,
+        "escaped": 0,
+        "errors": [],
+        "error_count": 0,
+        "seconds": 0.2564,
+        "files_per_second": 3900.1
+      },
+      "organizer_move": {
+        "engine": "content_organizer",
+        "moved_ok": 1000,
+        "total": 1000,
+        "accuracy": 1.0,
+        "missing": 0,
+        "misplaced": [],
+        "leftover_root": 0,
+        "escaped": 0,
+        "errors": [],
+        "error_count": 0,
+        "seconds": 0.1262,
+        "files_per_second": 7924.8
+      }
+    },
+    {
+      "n": 10000,
+      "tools_classify": {
+        "correct": 10000,
+        "total": 10000,
+        "accuracy": 1.0,
+        "wrong": [],
+        "wrong_count": 0,
+        "seconds": 0.0258
+      },
+      "organizer_classify": {
+        "correct": 10000,
+        "total": 10000,
+        "accuracy": 1.0,
+        "wrong": [],
+        "wrong_count": 0,
+        "seconds": 0.0203
+      },
+      "classifier_disagreements": 0,
+      "tools_move": {
+        "engine": "tools",
+        "moved_ok": 10000,
+        "total": 10000,
+        "accuracy": 1.0,
+        "missing": 0,
+        "misplaced": [],
+        "leftover_root": 0,
+        "escaped": 0,
+        "errors": [],
+        "error_count": 0,
+        "seconds": 2.6341,
+        "files_per_second": 3796.4
+      },
+      "organizer_move": {
+        "engine": "content_organizer",
+        "moved_ok": 10000,
+        "total": 10000,
+        "accuracy": 1.0,
+        "missing": 0,
+        "misplaced": [],
+        "leftover_root": 0,
+        "escaped": 0,
+        "errors": [],
+        "error_count": 0,
+        "seconds": 1.3937,
+        "files_per_second": 7175.3
+      }
+    }
+  ],
+  "safety": {
+    "content_organizer_blocks_escape": true,
+    "tools_blocks_escape": true,
+    "inside_still_there": true
+  },
+  "spec_extensions": 33
+}
